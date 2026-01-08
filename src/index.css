@@ -413,11 +413,16 @@
     -webkit-overflow-scrolling: touch;
   }
   
-  /* Ускорение анимаций на мобильных */
-  * {
-    animation-duration: 0.3s !important;
-    transition-duration: 0.3s !important;
-  }
+  /* Ускорение анимаций на мобильных, кроме бегущей строки */
+*:not(.animate-scroll-left) {
+  animation-duration: 0.3s !important;
+  transition-duration: 0.3s !important;
+}
+
+/* Отдельная настройка скорости для бегущей строки на мобильных */
+.animate-scroll-left {
+  animation-duration: 40s !important; /* Чем больше число, тем МЕДЛЕННЕЕ бежит строка */
+}
   
   /* Отключаем избыточные тени на мобильных для производительности */
   .shadow-lg,
