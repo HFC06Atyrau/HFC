@@ -1,0 +1,474 @@
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+@layer base {
+  :root {
+    --background: 220 20% 97%;
+    --foreground: 220 15% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 15% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 15% 15%;
+
+    --primary: 145 63% 42%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 15% 92%;
+    --secondary-foreground: 220 15% 20%;
+
+    --muted: 220 15% 92%;
+    --muted-foreground: 220 10% 45%;
+
+    --accent: 38 92% 50%;
+    --accent-foreground: 220 15% 10%;
+
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 15% 88%;
+    --input: 220 15% 88%;
+    --ring: 145 63% 42%;
+
+    --radius: 0.75rem;
+
+    /* Team colors */
+    --team-red: 0 72% 50%;
+    --team-blue: 217 91% 55%;
+    --team-green: 145 63% 42%;
+    --team-black: 220 15% 15%;
+
+    /* Football accents */
+    --pitch: 145 70% 35%;
+    --pitch-light: 145 60% 45%;
+    --gold: 38 92% 50%;
+    --stadium: 220 25% 12%;
+
+    --sidebar-background: 220 25% 10%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 145 63% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 38 92% 50%;
+    --sidebar-accent-foreground: 220 15% 10%;
+    --sidebar-border: 220 20% 20%;
+    --sidebar-ring: 145 63% 50%;
+    
+    --chart-1: 145 63% 50%;
+    --chart-2: 38 92% 50%;
+    --chart-3: 217 91% 55%;
+    --chart-4: 0 72% 50%;
+    --chart-5: 280 65% 55%;
+    --sidebar: 0 0% 100%;
+  }
+
+  .dark {
+    --background: 220 25% 8%;
+    --foreground: 0 0% 98%;
+    
+    --card: 220 25% 12%;
+    --card-foreground: 0 0% 98%;
+    
+    --popover: 220 25% 14%;
+    --popover-foreground: 0 0% 98%;
+    
+    --primary: 145 70% 50%;
+    --primary-foreground: 220 25% 8%;
+    
+    --secondary: 220 20% 20%;
+    --secondary-foreground: 0 0% 98%;
+    
+    --muted: 220 20% 18%;
+    --muted-foreground: 220 10% 60%;
+    
+    --accent: 38 92% 55%;
+    --accent-foreground: 220 25% 8%;
+    
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --border: 220 20% 20%;
+    --input: 220 20% 20%;
+    --ring: 145 70% 50%;
+    
+    --chart-1: 145 70% 55%;
+    --chart-2: 38 92% 55%;
+    --chart-3: 217 91% 60%;
+    --chart-4: 0 72% 55%;
+    --chart-5: 280 65% 60%;
+    
+    --sidebar: 220 25% 10%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 145 70% 55%;
+    --sidebar-primary-foreground: 220 25% 8%;
+    --sidebar-accent: 38 92% 55%;
+    --sidebar-accent-foreground: 220 25% 8%;
+    --sidebar-border: 220 20% 18%;
+    --sidebar-ring: 145 70% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Roboto', ui-sans-serif, system-ui, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Oswald', ui-sans-serif, system-ui, sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+}
+
+@layer components {
+  /* Football pitch gradient background */
+  .pitch-gradient {
+    background: linear-gradient(135deg, 
+      hsl(145 70% 35% / 0.15) 0%, 
+      hsl(145 60% 45% / 0.05) 50%,
+      transparent 100%
+    );
+  }
+
+  /* Stadium lights glow effect */
+  .stadium-glow {
+    box-shadow: 
+      0 0 60px hsl(145 70% 50% / 0.1),
+      0 0 100px hsl(145 70% 50% / 0.05);
+  }
+
+  /* Gold trophy glow */
+  .trophy-glow {
+    text-shadow: 0 0 20px hsl(38 92% 55% / 0.5);
+  }
+
+  /* Primary glow effect */
+  .glow-text {
+    text-shadow: 0 0 20px hsl(145 70% 50% / 0.6);
+  }
+
+  .glow-box {
+    box-shadow: 0 0 30px hsl(145 70% 50% / 0.2);
+  }
+
+  /* Team row colors - text only */
+  .text-team-red {
+    color: hsl(0 72% 55%);
+    font-weight: 600;
+  }
+
+  .text-team-blue {
+    color: hsl(217 91% 60%);
+    font-weight: 600;
+  }
+
+  .text-team-green {
+    color: hsl(145 70% 55%);
+    font-weight: 600;
+  }
+
+  .text-team-black {
+    color: hsl(0 0% 100%);
+    font-weight: 600;
+  }
+
+  /* Stats card with football styling - enhanced */
+  .stat-card {
+    @apply bg-card border border-border rounded-2xl p-4 sm:p-6 transition-all duration-300;
+    background: linear-gradient(180deg, 
+      hsl(var(--card)) 0%, 
+      hsl(var(--card) / 0.95) 100%
+    );
+    backdrop-filter: blur(10px);
+  }
+
+  .stat-card:hover {
+    @apply border-primary/40;
+    box-shadow: 
+      0 20px 60px hsl(145 70% 50% / 0.12),
+      0 0 0 1px hsl(145 70% 50% / 0.08);
+    transform: translateY(-3px);
+  }
+
+  /* Football field pattern overlay */
+  .field-pattern {
+    position: relative;
+  }
+
+  .field-pattern::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: 
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 40px,
+        hsl(145 70% 50% / 0.02) 40px,
+        hsl(145 70% 50% / 0.02) 42px
+      );
+    pointer-events: none;
+  }
+
+  /* Match score styling - compact for mobile */
+  .match-score {
+    @apply font-bold tracking-tight;
+    font-family: 'Oswald', sans-serif;
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Hero section gradient */
+  .hero-gradient {
+    background: radial-gradient(
+      ellipse 80% 50% at 50% -20%,
+      hsl(145 70% 50% / 0.15) 0%,
+      transparent 50%
+    );
+  }
+
+  /* Button with football styling */
+  .neon-button {
+    @apply relative overflow-hidden transition-all duration-300 font-semibold uppercase tracking-wide;
+    font-family: 'Oswald', sans-serif;
+  }
+
+  .neon-button::before {
+    content: '';
+    @apply absolute inset-0 opacity-0 transition-opacity duration-300;
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.3), hsl(var(--accent) / 0.3));
+  }
+
+  .neon-button:hover::before {
+    @apply opacity-100;
+  }
+
+  /* MVP display special styling */
+  .mvp-card {
+    background: linear-gradient(135deg, 
+      hsl(38 92% 50% / 0.15) 0%, 
+      hsl(38 92% 50% / 0.05) 50%,
+      transparent 100%
+    );
+    border: 1px solid hsl(38 92% 50% / 0.3);
+  }
+
+  /* Scoreboard styling */
+  .scoreboard {
+    @apply font-mono text-lg;
+    background: linear-gradient(180deg, 
+      hsl(220 25% 15%) 0%, 
+      hsl(220 25% 10%) 100%
+    );
+    border: 2px solid hsl(220 20% 25%);
+  }
+
+  /* Table styling enhancements */
+  .football-table {
+    @apply rounded-xl overflow-hidden;
+  }
+
+  .football-table thead {
+    background: linear-gradient(180deg, 
+      hsl(var(--primary) / 0.2) 0%, 
+      hsl(var(--primary) / 0.1) 100%
+    );
+  }
+
+  .football-table tbody tr {
+    @apply transition-all duration-200;
+  }
+
+  .football-table tbody tr:hover {
+    background: hsl(var(--primary) / 0.08);
+  }
+
+  /* Glass morphism effect */
+  .glass {
+    background: hsl(var(--card) / 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid hsl(var(--border) / 0.5);
+  }
+
+  /* Animated gradient border */
+  .animated-border {
+    position: relative;
+    background: linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box,
+                linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)), hsl(var(--primary))) border-box;
+    border: 2px solid transparent;
+    border-radius: 1rem;
+  }
+
+  /* Live indicator pulse */
+  .live-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+}
+
+@layer utilities {
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .font-display {
+    font-family: 'Oswald', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  /* Gradient text utility */
+  .gradient-text {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Animated gradient border */
+  .gradient-border {
+    position: relative;
+  }
+
+  .gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    border-radius: inherit;
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+    -webkit-mask: 
+      linear-gradient(#fff 0 0) content-box, 
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* Scrolling animation for live banner */
+  @keyframes scroll-left {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  .animate-scroll-left {
+    animation: scroll-left 20s linear infinite;
+  }
+
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  .animate-shimmer {
+    animation: shimmer 3s ease-in-out infinite;
+  }
+}
+
+/* ========================================
+   МОБИЛЬНЫЕ ОПТИМИЗАЦИИ
+   ======================================== */
+
+/* Предотвращение автозума на iOS и Android */
+@media (max-width: 768px) {
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="password"],
+  input[type="url"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+  
+  /* Улучшение производительности скролла */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Ускорение анимаций на мобильных */
+  * {
+    animation-duration: 0.3s !important;
+    transition-duration: 0.3s !important;
+  }
+  
+  /* Отключаем избыточные тени на мобильных для производительности */
+  .shadow-lg,
+  .shadow-xl {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+  }
+}
+
+/* Оптимизация рендеринга изображений */
+img {
+  content-visibility: auto;
+}
+
+/* Оптимизация для touch устройств */
+@media (hover: none) and (pointer: coarse) {
+  /* Увеличиваем область нажатия для кнопок */
+  button,
+  a,
+  input[type="submit"],
+  input[type="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Оптимизация производительности для списков */
+.overflow-auto,
+.overflow-y-auto,
+.overflow-x-auto {
+  will-change: scroll-position;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Быстрый рендеринг для карточек */
+.card,
+[class*="card"] {
+  contain: layout style paint;
+}
+
+/* Оптимизация для Select компонентов */
+[role="combobox"],
+[role="listbox"] {
+  contain: layout style;
+}
+
+/* Паузировать анимации при prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-scroll-left,
+  .animate-shimmer,
+  .animate-spin,
+  .animate-fade-in {
+    animation: none !important;
+  }
+}
