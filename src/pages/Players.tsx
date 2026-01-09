@@ -9,7 +9,6 @@ import { useToursBySeason } from '@/hooks/useTours';
 import { useAllMatches } from '@/hooks/useMatches';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Trophy, Target, Users, Gamepad2 } from 'lucide-react';
 
@@ -25,6 +24,21 @@ interface PlayerSeasonStats {
   mvpCount: number;
 }
 
+interface PlayerTableData {
+  playerId: string;
+  name: string;
+  photo_url: string;
+  team_id: string;
+  goals: number;
+  assists: number;
+  points: number;
+  games: number;
+  yellowCards: number;
+  redCards: number;
+  dreamTeamCount: number;
+  mvpCount: number;
+}
+
 export default function Players() {
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   
@@ -34,16 +48,9 @@ export default function Players() {
   const allStats = statsData?.stats || [];
   const substitutions = statsData?.substitutions || [];
   const { data: seasons = [] } = useSeasons();
-
-  console.log('=== ДАННЫЕ ===');
-  console.log('Игроки:', players.length);
-  console.log('Статистика:', allStats.length);
-  console.log('Подстановки:', substitutions.length);
-  
-  // Показываем первую статистику
-  if (allStats.length > 0) {
-    console.log('Пример статистики:', allStats[0]);
-  }
+  const { data: allTourDreamTeams = [] } = useTourDreamTeamsBySeason(null);
+  const { data: allMatches = [] } = useAllMatches();
+  const { data: allTours = [] } = useToursBySeason(null);
 
   // Вспомогательная функция для получения пропущенных туров
   const getSkippedTours = (playerId: string) => {
@@ -66,34 +73,67 @@ export default function Players() {
     });
   };
 
-  // --- ЛОГИКА РАНЖИРОВАНИЯ (СОРТИРОВКА) ---
-  const rankedPlayers = useMemo(() => {
-    const sorted = [...players].sort((a, b) => {
-      const statsA = getPlayerStats(a.id);
-      const statsB = getPlayerStats(b.id);
-      
-      const pointsA = statsA.reduce((sum: number, s: any) => sum + (s.goals || 0) + (s.assists || 0), 0);
-      const pointsB = statsB.reduce((sum: number, s: any) => sum + (s.goals || 0) + (s.assists || 0), 0);
+  // Считаем игры для игрока
+  const getPlayerGames = (playerId: string) => {
+    const player = players.find((p: any) => p.id === playerId);
+    const skippedTours = getSkippedTours(playerId);
+    
+    let gamesCount = 0;
+    if (player?.team_id) {
+      allMatches.forEach((match: any) => {
+        if ((match.home_team_id === player.team_id || match.away_team_id === player.team_id) && !skippedTours.has(match.tour_id)) {
+          gamesCount++;
+        }
+      });
+    }
+    substitutions.forEach((sub: any) => {
+      if (sub.substitute_player_id === playerId) {
+        const originalPlayer = players.find((p: any) => p.id === sub.original_player_id);
+        if (originalPlayer?.team_id) {
+          const matchesInTour = allMatches.filter((match: any) => 
+            match.tour_id === sub.tour_id && (match.home_team_id === originalPlayer.team_id || match.away_team_id === originalPlayer.team_id)
+          );
+          gamesCount += matchesInTour.length;
+        }
+      }
+    });
+    return gamesCount;
+  };
 
-      if (pointsB !== pointsA) return pointsB - pointsA;
-      
-      const goalsA = statsA.reduce((sum: number, s: any) => sum + (s.goals || 0), 0);
-      const goalsB = statsB.reduce((sum: number, s: any) => sum + (s.goals || 0), 0);
-      return goalsB - goalsA;
+  // Создаем таблицу с общей статистикой и ранжируем
+  const playerTableData = useMemo(() => {
+    const data: PlayerTableData[] = players.map((player: any) => {
+      const playerStats = getPlayerStats(player.id);
+      const goals = playerStats.reduce((sum: number, s: any) => sum + (s.goals || 0), 0);
+      const assists = playerStats.reduce((sum: number, s: any) => sum + (s.assists || 0), 0);
+      const yellowCards = playerStats.reduce((sum: number, s: any) => sum + (s.yellow_cards || 0), 0);
+      const redCards = playerStats.reduce((sum: number, s: any) => sum + (s.red_cards || 0), 0);
+      const games = getPlayerGames(player.id);
+      const dreamTeamCount = allTourDreamTeams.filter((dt: any) => dt.player_id === player.id && dt.team_type === 'dream').length;
+      const mvpCount = allTours.filter((tour: any) => tour.mvp_player_id === player.id).length;
+
+      return {
+        playerId: player.id,
+        name: player.name,
+        photo_url: player.photo_url,
+        team_id: player.team_id,
+        goals,
+        assists,
+        points: goals + assists,
+        games,
+        yellowCards,
+        redCards,
+        dreamTeamCount,
+        mvpCount,
+      };
     });
 
-    // Подробное логирование
-    console.log('=== ТОП-10 РЕЙТИНГА ===');
-    sorted.slice(0, 10).forEach((player: any, idx: number) => {
-      const stats = getPlayerStats(player.id);
-      const goals = stats.reduce((sum: number, s: any) => sum + (s.goals || 0), 0);
-      const assists = stats.reduce((sum: number, s: any) => sum + (s.assists || 0), 0);
-      const points = goals + assists;
-      console.log(`${idx + 1}. ${player.name}: ${goals}г + ${assists}п = ${points} Г+П (матчей: ${stats.length})`);
+    // Сортируем по Г+П, потом по голам
+    return data.sort((a, b) => {
+      if (b.points !== a.points) return b.points - a.points;
+      return b.goals - a.goals;
     });
-
-    return sorted;
-  }, [players, allStats, substitutions]);
+  }, [players, allStats, substitutions, allMatches, allTourDreamTeams, allTours]);
 
   const selectedPlayer = players.find((p: any) => p.id === selectedPlayerId);
   const selectedPlayerTeam = selectedPlayer ? teams.find((t: any) => t.id === selectedPlayer.team_id) : null;
@@ -120,6 +160,7 @@ export default function Players() {
             onBack={() => setSelectedPlayerId(null)}
             getTeamTextClass={getTeamTextClass}
             getPlayerStats={getPlayerStats}
+            getPlayerGames={getPlayerGames}
           />
         ) : (
           <div className="space-y-6">
@@ -133,43 +174,83 @@ export default function Players() {
               </p>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {rankedPlayers.map((player: any, index: number) => {
-                const team = teams.find((t: any) => t.id === player.team_id);
-                const playerStatsForCard = getPlayerStats(player.id);
-                const pointsForCard = playerStatsForCard.reduce((sum: number, s: any) => sum + (s.goals || 0) + (s.assists || 0), 0);
-                
-                return (
-                  <Card 
-                    key={player.id} 
-                    className="bg-card border-border cursor-pointer hover:border-primary/50 transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
-                    onClick={() => setSelectedPlayerId(player.id)}
-                  >
-                    {/* Метка с местом в рейтинге */}
-                    <div className="absolute top-0 left-0 bg-primary text-primary-foreground px-3 py-1 rounded-br-lg font-bold text-sm z-10">
-                      #{index + 1}
-                    </div>
-                    
-                    <CardContent className="p-5 flex flex-col items-center text-center gap-3">
-                      <Avatar className="h-20 w-20 border-2 border-primary/30">
-                        <AvatarImage src={player.photo_url} alt={player.name} />
-                        <AvatarFallback className="text-2xl bg-primary/20 font-display">
-                          {player.name[0]}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-display font-bold text-foreground tracking-wide">{player.name}</p>
-                        {team && (
-                          <p className={`text-sm font-medium ${getTeamTextClass(team.color)}`}>
-                            {team.name}
-                          </p>
-                        )}
-                        <p className="text-lg font-bold text-primary mt-2">{pointsForCard} Г+П</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-primary/10 border-b-2 border-primary">
+                    <th className="px-4 py-3 text-left font-bold text-foreground">Место</th>
+                    <th className="px-4 py-3 text-left font-bold text-foreground">Игрок</th>
+                    <th className="px-4 py-3 text-left font-bold text-foreground">Команда</th>
+                    <th className="px-4 py-3 text-center font-bold text-foreground">Игры</th>
+                    <th className="px-4 py-3 text-center font-bold text-foreground">Голы</th>
+                    <th className="px-4 py-3 text-center font-bold text-foreground">Пасы</th>
+                    <th className="px-4 py-3 text-center font-bold text-primary">Г+П</th>
+                    <th className="px-4 py-3 text-center font-bold text-foreground">ЖК</th>
+                    <th className="px-4 py-3 text-center font-bold text-foreground">КК</th>
+                    <th className="px-4 py-3 text-center font-bold text-foreground">MVP</th>
+                    <th className="px-4 py-3 text-center font-bold text-foreground">⭐</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {playerTableData.map((playerData, index) => {
+                    const team = teams.find((t: any) => t.id === playerData.team_id);
+
+                    return (
+                      <tr 
+                        key={playerData.playerId}
+                        className="border-b border-border hover:bg-primary/5 transition-colors cursor-pointer"
+                        onClick={() => setSelectedPlayerId(playerData.playerId)}
+                      >
+                        <td className="px-4 py-3 font-bold text-primary">
+                          #{index + 1}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-10 w-10 border border-primary/30">
+                              <AvatarImage src={playerData.photo_url} alt={playerData.name} />
+                              <AvatarFallback className="bg-primary/20 font-display text-sm">
+                                {playerData.name[0]}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium text-foreground">{playerData.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          {team && (
+                            <span className={`font-medium ${getTeamTextClass(team.color)}`}>
+                              {team.name}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-center text-foreground">
+                          {playerData.games}
+                        </td>
+                        <td className="px-4 py-3 text-center text-foreground">
+                          {playerData.goals}
+                        </td>
+                        <td className="px-4 py-3 text-center text-foreground">
+                          {playerData.assists}
+                        </td>
+                        <td className="px-4 py-3 text-center font-bold text-primary text-lg">
+                          {playerData.points}
+                        </td>
+                        <td className="px-4 py-3 text-center text-foreground">
+                          {playerData.yellowCards}
+                        </td>
+                        <td className="px-4 py-3 text-center text-foreground">
+                          {playerData.redCards}
+                        </td>
+                        <td className="px-4 py-3 text-center text-yellow-500 font-bold">
+                          {playerData.mvpCount}
+                        </td>
+                        <td className="px-4 py-3 text-center text-foreground">
+                          {playerData.dreamTeamCount}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
@@ -184,48 +265,13 @@ interface PlayerProfileProps {
   onBack: () => void;
   getTeamTextClass: (color: string | null | undefined) => string;
   getPlayerStats: (playerId: string) => any[];
+  getPlayerGames: (playerId: string) => number;
 }
 
-function PlayerProfile({ player, team, onBack, getTeamTextClass, getPlayerStats }: PlayerProfileProps) {
+function PlayerProfile({ player, team, onBack, getTeamTextClass, getPlayerStats, getPlayerGames }: PlayerProfileProps) {
   const { data: statsData } = usePlayerStatsWithSubstitutions();
-  const substitutions = statsData?.substitutions || [];
   const { data: allTourDreamTeams = [] } = useTourDreamTeamsBySeason(null);
-  const { data: allMatches = [] } = useAllMatches();
-  const { data: players = [] } = usePlayers();
   const { data: allTours = [] } = useToursBySeason(null);
-
-  const skippedTours = useMemo(() => {
-    const set = new Set<string>();
-    substitutions.forEach((sub: any) => {
-      if (sub.original_player_id === player.id) {
-        set.add(sub.tour_id);
-      }
-    });
-    return set;
-  }, [substitutions, player.id]);
-
-  const totalGames = useMemo(() => {
-    let gamesCount = 0;
-    if (player.team_id) {
-      allMatches.forEach((match: any) => {
-        if ((match.home_team_id === player.team_id || match.away_team_id === player.team_id) && !skippedTours.has(match.tour_id)) {
-          gamesCount++;
-        }
-      });
-    }
-    substitutions.forEach((sub: any) => {
-      if (sub.substitute_player_id === player.id) {
-        const originalPlayer = players.find((p: any) => p.id === sub.original_player_id);
-        if (originalPlayer?.team_id) {
-          const matchesInTour = allMatches.filter((match: any) => 
-            match.tour_id === sub.tour_id && (match.home_team_id === originalPlayer.team_id || match.away_team_id === originalPlayer.team_id)
-          );
-          gamesCount += matchesInTour.length;
-        }
-      }
-    });
-    return gamesCount;
-  }, [player.id, player.team_id, allMatches, skippedTours, substitutions, players]);
 
   // --- РАСЧЕТ Г+П В ПРОФИЛЕ ---
   const stats = useMemo(() => {
@@ -242,6 +288,8 @@ function PlayerProfile({ player, team, onBack, getTeamTextClass, getPlayerStats 
       totalRedCards: playerStats.reduce((sum: number, s: any) => sum + (s.red_cards || 0), 0),
     };
   }, [player.id, getPlayerStats]);
+
+  const totalGames = getPlayerGames(player.id);
 
   const dreamTeamCount = useMemo(() => {
     return allTourDreamTeams.filter((dt: any) => dt.player_id === player.id && dt.team_type === 'dream').length;
