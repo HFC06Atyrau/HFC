@@ -36,25 +36,29 @@ export default function Players() {
   const { data: seasons = [] } = useSeasons();
 
   // Вспомогательная функция для получения пропущенных туров
-  const getSkippedTours = (playerId: string) => {
-    const set = new Set<string>();
-    substitutions.forEach((sub: any) => {
-      if (sub.original_player_id === playerId) {
-        set.add(sub.tour_id);
-      }
-    });
-    return set;
-  };
+  const getSkippedTours = useMemo(() => {
+    return (playerId: string) => {
+      const set = new Set<string>();
+      substitutions.forEach((sub: any) => {
+        if (sub.original_player_id === playerId) {
+          set.add(sub.tour_id);
+        }
+      });
+      return set;
+    };
+  }, [substitutions]);
 
   // Вспомогательная функция для фильтрации статистики
-  const getPlayerStats = (playerId: string) => {
-    const skippedTours = getSkippedTours(playerId);
-    return allStats.filter((s: any) => {
-      if (s.player_id !== playerId) return false;
-      const tourId = s.match?.tour_id;
-      return !(tourId && skippedTours.has(tourId));
-    });
-  };
+  const getPlayerStats = useMemo(() => {
+    return (playerId: string) => {
+      const skippedTours = getSkippedTours(playerId);
+      return allStats.filter((s: any) => {
+        if (s.player_id !== playerId) return false;
+        const tourId = s.match?.tour_id;
+        return !(tourId && skippedTours.has(tourId));
+      });
+    };
+  }, [allStats, getSkippedTours]);
 
   // --- ЛОГИКА РАНЖИРОВАНИЯ (СОРТИРОВКА) ---
   const rankedPlayers = useMemo(() => {
@@ -71,7 +75,7 @@ export default function Players() {
       const goalsB = statsB.reduce((sum: number, s: any) => sum + (s.goals || 0), 0);
       return goalsB - goalsA;
     });
-  }, [players, allStats, substitutions]);
+  }, [players, getPlayerStats]);
 
   const selectedPlayer = players.find((p: any) => p.id === selectedPlayerId);
   const selectedPlayerTeam = selectedPlayer ? teams.find((t: any) => t.id === selectedPlayer.team_id) : null;
@@ -166,9 +170,7 @@ interface PlayerProfileProps {
 
 function PlayerProfile({ player, team, onBack, getTeamTextClass, getPlayerStats }: PlayerProfileProps) {
   const { data: statsData } = usePlayerStatsWithSubstitutions();
-  const allStats = statsData?.stats || [];
   const substitutions = statsData?.substitutions || [];
-  const { data: seasons = [] } = useSeasons();
   const { data: allTourDreamTeams = [] } = useTourDreamTeamsBySeason(null);
   const { data: allMatches = [] } = useAllMatches();
   const { data: players = [] } = usePlayers();
@@ -207,7 +209,7 @@ function PlayerProfile({ player, team, onBack, getTeamTextClass, getPlayerStats 
     return gamesCount;
   }, [player.id, player.team_id, allMatches, skippedTours, substitutions, players]);
 
-  // --- РАСЧЕТ Г+П В ПРОФИЛЕ (с использованием единой функции) ---
+  // --- РАСЧЕТ Г+П В ПРОФИЛЕ ---
   const stats = useMemo(() => {
     const playerStats = getPlayerStats(player.id);
     
@@ -217,7 +219,7 @@ function PlayerProfile({ player, team, onBack, getTeamTextClass, getPlayerStats 
     return {
       totalGoals: goals,
       totalAssists: assists,
-      totalPoints: goals + assists, // Г + П
+      totalPoints: goals + assists,
       totalYellowCards: playerStats.reduce((sum: number, s: any) => sum + (s.yellow_cards || 0), 0),
       totalRedCards: playerStats.reduce((sum: number, s: any) => sum + (s.red_cards || 0), 0),
     };
