@@ -12,36 +12,53 @@
     <meta name="description" content="Статистика футбольных турниров HFC. Результаты матчей, таблицы команд, статистика игроков." />
     <meta name="author" content="HFC" />
 
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="HFC Stats">
-    <link rel="apple-touch-icon" href="/HFC/icon.png?v=1">
+    
+    <link rel="apple-touch-icon" href="/HFC/icon.png?v=2">
+    <link rel="icon" type="image/png" href="/HFC/icon.png?v=2">
 
     <meta property="og:title" content="HFC Stats - Футбольная статистика" />
     <meta property="og:description" content="Статистика футбольных турниров HFC. Результаты матчей, таблицы команд, статистика игроков." />
     <meta property="og:type" content="website" />
-
     <meta name="twitter:card" content="summary_large_image" />
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
     <script>
-      // 1. Если при обновлении сайта какой-то файл не нашелся (из-за старого кэша) — перезагружаем
+      // 1. Обработка ошибок загрузки скриптов (белый экран)
       window.addEventListener('error', (e) => {
         if (e.message.includes('Loading chunk') || e.message.includes('Script error')) {
-          console.log('Кэш устарел, перезагружаю...');
-          location.reload();
+          console.log('Кэш скриптов устарел, перезагружаю...');
+          location.reload(true);
         }
       }, true);
 
-      // 2. АВТО-ОБНОВЛЕНИЕ: Когда ты делаешь "npm run deploy", 
-      // компьютер и телефон увидят новую версию и сами обновят страницу.
+      // 2. Авто-обновление Service Worker (при деплое)
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.addEventListener('controllerchange', () => {
           window.location.reload();
         });
       }
+
+      // 3. ЯДЕРНАЯ ОЧИСТКА: Если через 4 секунды таблицы всё еще пустые (как на твоем скрине)
+      // значит залип кэш данных Supabase. Чистим всё и перезагружаем один раз.
+      setTimeout(() => {
+        const hasData = document.body.innerText.includes('⚽') || document.body.innerText.includes('🎮');
+        if (!hasData && !window.location.hash.includes('data-reset')) {
+          console.log('Данные не загружены. Принудительная очистка кэша хранилища...');
+          if ('caches' in window) {
+            caches.keys().then(names => {
+              for (let name of names) caches.delete(name);
+            });
+          }
+          window.location.hash = 'data-reset';
+          window.location.reload(true);
+        }
+      }, 4000);
     </script>
     <script type="module" crossorigin src="/HFC/assets/index-BvkxZALt.js"></script>
     <link rel="stylesheet" crossorigin href="/HFC/assets/index-BTmbsGHq.css">
