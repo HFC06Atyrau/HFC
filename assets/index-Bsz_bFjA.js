@@ -1,1 +1,0 @@
-import{r,F as n,H as s}from"./index-fgles4wr.js";var i=s[" useId ".trim().toString()]||(()=>{}),u=0;function x(e){const[t,o]=r.useState(i());return n(()=>{o(a=>a??String(u++))},[e]),t?`radix-${t}`:""}var c=r.createContext(void 0);function f(e){const t=r.useContext(c);return e||t||"ltr"}export{x as a,f as u};
