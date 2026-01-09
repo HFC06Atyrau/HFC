@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.supabase.co;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co;">
 
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
@@ -17,37 +17,27 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="HFC Stats">
     
-    <link rel="apple-touch-icon" href="/HFC/icon.png?v=6">
-    <link rel="icon" type="image/png" href="/HFC/icon.png?v=6">
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="apple-touch-icon" href="/HFC/icon.png?v=11">
+    <link rel="icon" type="image/png" href="/HFC/icon.png?v=11">
 
     <script>
-      // 1. Очистка кэша при критических ошибках скриптов
+      // 1. Ловим ошибки CSP и чанков
       window.addEventListener('error', (e) => {
-        if (e.message.includes('Loading chunk')) {
-          console.log('Критическая ошибка загрузки. Чистим кэш...');
-          if ('caches' in window) {
-            caches.keys().then(names => {
-              for (let name of names) caches.delete(name);
-            });
-          }
+        if (e.message.includes('eval') || e.message.includes('Loading chunk')) {
+          console.warn('Критическая ошибка JS/CSP. Чистим кэш и перезагружаем...');
+          if ('caches' in window) caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
           location.reload(true);
         }
       }, true);
 
-      // 2. Авто-обновление при деплое новой версии
+      // 2. Авто-обновление PWA при новом деплое
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-          window.location.reload();
-        });
+        navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
       }
     </script>
     <script type="module" crossorigin src="/HFC/assets/index-BvkxZALt.js"></script>
     <link rel="stylesheet" crossorigin href="/HFC/assets/index-BTmbsGHq.css">
   <link rel="manifest" href="/HFC/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/HFC/registerSW.js"></script></head>
-
   <body class="dark">
     <div id="root"></div>
   </body>
