@@ -6,10 +6,14 @@ import { useCurrentSeason } from '@/hooks/useSeasons';
 import { useTourDreamTeamsBySeason } from '@/hooks/useTourDreamTeamsBySeason';
 import { useMVPCountsBySeason } from '@/hooks/useMVPStats';
 import { useAllMatches } from '@/hooks/useMatches';
-import { ArrowUpDown, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowUpDown, ChevronDown, ChevronUp, Trash2 } from 'lucide-react'; // Добавил Trash2
+import { useAuth } from '@/lib/auth'; // Добавил проверку авторизации
+import { supabase } from "@/integrations/supabase/client";  // Добавил клиент базы данных
+import { useToast } from '@/hooks/use-toast'; // Для уведомлений
 
 const INITIAL_VISIBLE_COUNT = 6;
 
+// ... (интерфейс OverallPlayerStats остается прежним)
 interface OverallPlayerStats {
   playerId: string;
   playerName: string;
@@ -26,10 +30,12 @@ interface OverallPlayerStats {
 }
 
 export function OverallPlayerStatsTable() {
+  const { isAdmin } = useAuth(); // Получаем статус админа
+  const { toast } = useToast();
   const { data: statsData } = usePlayerStatsWithSubstitutions();
   const playerStats = statsData?.stats || [];
   const substitutions = statsData?.substitutions || [];
-  const { data: players = [] } = usePlayers();
+  const { data: players = [], refetch: refetchPlayers } = usePlayers(); // Добавил refetch
   const { data: teams = [] } = useTeams();
   const { data: allMatches = [] } = useAllMatches();
   const { data: currentSeason } = useCurrentSeason();
@@ -39,6 +45,34 @@ export function OverallPlayerStatsTable() {
   const [sortBy, setSortBy] = useState<'points' | 'goals' | 'assists' | 'yellowCards' | 'redCards' | 'ownGoals' | 'games'>('points');
   const [isExpanded, setIsExpanded] = useState(false);
 
+  // ФУНКЦИЯ УДАЛЕНИЯ
+  const handleDeletePlayer = async (id: string, name: string) => {
+    if (!window.confirm(`Вы уверены, что хотите удалить игрока ${name}? Все его данные будут стерты.`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from('players').delete().eq('id', id);
+      if (error) throw error;
+
+      toast({
+        title: "Игрок удален",
+        description: `${name} успешно удален из базы.`,
+      });
+      
+      refetchPlayers(); // Обновляем список мгновенно
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Ошибка удаления",
+        description: error.message,
+      });
+    }
+  };
+
+  // ... (useMemo для dreamTeamCounts, skippedTours, playerGamesMap и aggregatedStats остаются без изменений)
+  // [ЗДЕСЬ ВАШ ПРЕЖНИЙ КОД useMemo ДОaggregatedStats]
+  
   const dreamTeamCounts = useMemo(() => {
     const counts = new Map<string, number>();
     tourDreamTeams.forEach(dt => {
@@ -59,10 +93,8 @@ export function OverallPlayerStatsTable() {
 
   const playerGamesMap = useMemo(() => {
     const gamesMap = new Map<string, number>();
-    
     players.forEach((player: any) => {
       if (!player.team_id) return;
-      
       let gamesCount = 0;
       allMatches.forEach((match: any) => {
         if (match.home_team_id === player.team_id || match.away_team_id === player.team_id) {
@@ -71,38 +103,29 @@ export function OverallPlayerStatsTable() {
           }
         }
       });
-      
       gamesMap.set(player.id, gamesCount);
     });
-
     substitutions.forEach((sub: any) => {
       const substituteId = sub.substitute_player_id;
       const tourId = sub.tour_id;
-      
       const originalPlayer = players.find((p: any) => p.id === sub.original_player_id);
       if (originalPlayer?.team_id) {
         const matchesInTour = allMatches.filter((match: any) => 
           match.tour_id === tourId && 
           (match.home_team_id === originalPlayer.team_id || match.away_team_id === originalPlayer.team_id)
         );
-        
         const currentGames = gamesMap.get(substituteId) || 0;
         gamesMap.set(substituteId, currentGames + matchesInTour.length);
       }
     });
-
     return gamesMap;
   }, [players, allMatches, skippedTours, substitutions]);
 
   const aggregatedStats = useMemo(() => {
     const statsMap = new Map<string, OverallPlayerStats>();
-
     playerStats.forEach((stat: any) => {
       const tourId = stat.match?.tour_id;
-      if (tourId && skippedTours.has(`${stat.player_id}_${tourId}`)) {
-        return;
-      }
-
+      if (tourId && skippedTours.has(`${stat.player_id}_${tourId}`)) return;
       const existing = statsMap.get(stat.player_id);
       if (existing) {
         existing.goals += stat.goals || 0;
@@ -129,13 +152,11 @@ export function OverallPlayerStatsTable() {
         });
       }
     });
-
     statsMap.forEach((stats, playerId) => {
       stats.games = playerGamesMap.get(playerId) || 0;
       stats.dreamTeamCount = dreamTeamCounts.get(playerId) || 0;
       stats.mvpCount = mvpCounts.get(playerId) || 0;
     });
-
     const sorted = Array.from(statsMap.values());
     sorted.sort((a, b) => {
       if (sortBy === 'points') {
@@ -144,25 +165,17 @@ export function OverallPlayerStatsTable() {
         if (pointsB !== pointsA) return pointsB - pointsA;
         return b.goals - a.goals;
       }
-      
       const sortableColumns: Record<string, keyof OverallPlayerStats> = {
-        'goals': 'goals',
-        'assists': 'assists',
-        'yellowCards': 'yellowCards',
-        'redCards': 'redCards',
-        'ownGoals': 'ownGoals',
-        'games': 'games',
+        'goals': 'goals', 'assists': 'assists', 'yellowCards': 'yellowCards',
+        'redCards': 'redCards', 'ownGoals': 'ownGoals', 'games': 'games',
       };
-
       const column = sortableColumns[sortBy];
       if (column) {
         const primary = (b[column] as number) - (a[column] as number);
         if (primary !== 0) return primary;
       }
-      
       return b.goals - a.goals || b.assists - a.assists;
     });
-    
     return sorted;
   }, [playerStats, players, teams, dreamTeamCounts, mvpCounts, sortBy, skippedTours, playerGamesMap]);
 
@@ -192,19 +205,6 @@ export function OverallPlayerStatsTable() {
     </th>
   );
 
-  if (aggregatedStats.length === 0) {
-    return (
-      <div className="stat-card">
-        <h2 className="text-xl font-bold text-foreground font-mono mb-4">
-          Общая статистика игроков
-        </h2>
-        <p className="text-muted-foreground text-center py-8">
-          Нет данных для отображения
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="stat-card">
       <h2 className="text-xl font-bold text-foreground font-mono mb-4">
@@ -226,6 +226,7 @@ export function OverallPlayerStatsTable() {
               <SortableHeader column="redCards" label="🟥" />
               <th className="text-center py-2 px-1">⭐</th>
               <th className="text-center py-2 px-1">🏆</th>
+              {isAdmin && <th className="text-center py-2 px-1">⚙️</th>} {/* Колонка админа */}
             </tr>
           </thead>
           <tbody>
@@ -244,32 +245,34 @@ export function OverallPlayerStatsTable() {
                 <td className={`py-2 px-2 hidden sm:table-cell ${getTeamNameClass(player.teamColor)}`}>
                   {player.teamName}
                 </td>
-                <td className="text-center py-2 px-1 font-mono text-sm text-muted-foreground">
-                  {player.games}
-                </td>
-                <td className="text-center py-2 px-1 font-mono font-bold text-primary text-sm">
-                  {player.goals}
-                </td>
+                <td className="text-center py-2 px-1 font-mono text-sm text-muted-foreground">{player.games}</td>
+                <td className="text-center py-2 px-1 font-mono font-bold text-primary text-sm">{player.goals}</td>
                 <td className="text-center py-2 px-1 font-mono text-sm">{player.assists}</td>
-                <td className="text-center py-2 px-1 font-mono font-bold text-primary text-sm">
-                  {player.goals + player.assists}
-                </td>
-                <td className="text-center py-2 px-1 font-mono text-sm text-orange-500">
-                  {player.ownGoals > 0 ? player.ownGoals : '-'}
-                </td>
+                <td className="text-center py-2 px-1 font-mono font-bold text-primary text-sm">{player.goals + player.assists}</td>
+                <td className="text-center py-2 px-1 font-mono text-sm text-orange-500">{player.ownGoals > 0 ? player.ownGoals : '-'}</td>
                 <td className="text-center py-2 px-1 font-mono text-sm">{player.yellowCards}</td>
                 <td className="text-center py-2 px-1 font-mono text-sm">{player.redCards}</td>
-                <td className="text-center py-2 px-1 font-mono text-yellow-500 text-sm">
-                  {player.dreamTeamCount > 0 ? player.dreamTeamCount : '-'}
-                </td>
-                <td className="text-center py-2 px-1 font-mono text-amber-500 text-sm">
-                  {player.mvpCount > 0 ? player.mvpCount : '-'}
-                </td>
+                <td className="text-center py-2 px-1 font-mono text-yellow-500 text-sm">{player.dreamTeamCount > 0 ? player.dreamTeamCount : '-'}</td>
+                <td className="text-center py-2 px-1 font-mono text-amber-500 text-sm">{player.mvpCount > 0 ? player.mvpCount : '-'}</td>
+                
+                {/* Кнопка удаления ТОЛЬКО для админа */}
+                {isAdmin && (
+                  <td className="text-center py-2 px-1">
+                    <button 
+                      onClick={() => handleDeletePlayer(player.playerId, player.playerName)}
+                      className="p-1.5 text-muted-foreground hover:text-destructive transition-colors rounded-md hover:bg-destructive/10"
+                      title="Удалить игрока"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      {/* ... (Кнопка "Показать все" остается прежней) */}
       {hasMore && (
         <button
           onClick={() => setIsExpanded(!isExpanded)}
