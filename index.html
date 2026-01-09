@@ -17,30 +17,32 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="HFC Stats">
     
-    <link rel="apple-touch-icon" href="/HFC/icon.png?v=5">
-    <link rel="icon" type="image/png" href="/HFC/icon.png?v=5">
+    <link rel="apple-touch-icon" href="/HFC/icon.png?v=6">
+    <link rel="icon" type="image/png" href="/HFC/icon.png?v=6">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
     <script>
-      // 1. Быстрая перезагрузка при ошибках чанков
+      // 1. Очистка кэша при критических ошибках скриптов
       window.addEventListener('error', (e) => {
         if (e.message.includes('Loading chunk')) {
+          console.log('Критическая ошибка загрузки. Чистим кэш...');
+          if ('caches' in window) {
+            caches.keys().then(names => {
+              for (let name of names) caches.delete(name);
+            });
+          }
           location.reload(true);
         }
       }, true);
 
-      // 2. Авто-обновление PWA
+      // 2. Авто-обновление при деплое новой версии
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.addEventListener('controllerchange', () => {
           window.location.reload();
         });
       }
-
-      // 3. ПРОВЕРКА КЛЮЧЕЙ (для отладки в консоли)
-      console.log("Проверка ключей Supabase...");
-      // Если ключи undefined в консоли, значит они не проброшены в сборку
     </script>
     <script type="module" crossorigin src="/HFC/assets/index-BvkxZALt.js"></script>
     <link rel="stylesheet" crossorigin href="/HFC/assets/index-BTmbsGHq.css">
