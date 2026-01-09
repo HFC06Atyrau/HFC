@@ -35,34 +35,40 @@ export default function Players() {
   const substitutions = statsData?.substitutions || [];
   const { data: seasons = [] } = useSeasons();
 
+  console.log('=== ДАННЫЕ ===');
+  console.log('Игроки:', players.length);
+  console.log('Статистика:', allStats.length);
+  console.log('Подстановки:', substitutions.length);
+  
+  // Показываем первую статистику
+  if (allStats.length > 0) {
+    console.log('Пример статистики:', allStats[0]);
+  }
+
   // Вспомогательная функция для получения пропущенных туров
-  const getSkippedTours = useMemo(() => {
-    return (playerId: string) => {
-      const set = new Set<string>();
-      substitutions.forEach((sub: any) => {
-        if (sub.original_player_id === playerId) {
-          set.add(sub.tour_id);
-        }
-      });
-      return set;
-    };
-  }, [substitutions]);
+  const getSkippedTours = (playerId: string) => {
+    const set = new Set<string>();
+    substitutions.forEach((sub: any) => {
+      if (sub.original_player_id === playerId) {
+        set.add(sub.tour_id);
+      }
+    });
+    return set;
+  };
 
   // Вспомогательная функция для фильтрации статистики
-  const getPlayerStats = useMemo(() => {
-    return (playerId: string) => {
-      const skippedTours = getSkippedTours(playerId);
-      return allStats.filter((s: any) => {
-        if (s.player_id !== playerId) return false;
-        const tourId = s.match?.tour_id;
-        return !(tourId && skippedTours.has(tourId));
-      });
-    };
-  }, [allStats, getSkippedTours]);
+  const getPlayerStats = (playerId: string) => {
+    const skippedTours = getSkippedTours(playerId);
+    return allStats.filter((s: any) => {
+      if (s.player_id !== playerId) return false;
+      const tourId = s.match?.tour_id;
+      return !(tourId && skippedTours.has(tourId));
+    });
+  };
 
   // --- ЛОГИКА РАНЖИРОВАНИЯ (СОРТИРОВКА) ---
   const rankedPlayers = useMemo(() => {
-    return [...players].sort((a, b) => {
+    const sorted = [...players].sort((a, b) => {
       const statsA = getPlayerStats(a.id);
       const statsB = getPlayerStats(b.id);
       
@@ -75,7 +81,19 @@ export default function Players() {
       const goalsB = statsB.reduce((sum: number, s: any) => sum + (s.goals || 0), 0);
       return goalsB - goalsA;
     });
-  }, [players, getPlayerStats]);
+
+    // Подробное логирование
+    console.log('=== ТОП-10 РЕЙТИНГА ===');
+    sorted.slice(0, 10).forEach((player: any, idx: number) => {
+      const stats = getPlayerStats(player.id);
+      const goals = stats.reduce((sum: number, s: any) => sum + (s.goals || 0), 0);
+      const assists = stats.reduce((sum: number, s: any) => sum + (s.assists || 0), 0);
+      const points = goals + assists;
+      console.log(`${idx + 1}. ${player.name}: ${goals}г + ${assists}п = ${points} Г+П (матчей: ${stats.length})`);
+    });
+
+    return sorted;
+  }, [players, allStats, substitutions]);
 
   const selectedPlayer = players.find((p: any) => p.id === selectedPlayerId);
   const selectedPlayerTeam = selectedPlayer ? teams.find((t: any) => t.id === selectedPlayer.team_id) : null;
