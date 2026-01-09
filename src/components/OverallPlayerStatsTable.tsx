@@ -36,6 +36,9 @@ export function OverallPlayerStatsTable() {
   const { data: tourDreamTeams = [] } = useTourDreamTeamsBySeason(currentSeason?.id ?? null);
   const { data: mvpCounts = new Map() } = useMVPCountsBySeason(currentSeason?.id ?? null);
 
+  const [sortBy, setSortBy] = useState<'points' | 'goals' | 'assists' | 'yellowCards' | 'redCards' | 'ownGoals' | 'games'>('points');
+  const [isExpanded, setIsExpanded] = useState(false);
+
   const dreamTeamCounts = useMemo(() => {
     const counts = new Map<string, number>();
     tourDreamTeams.forEach(dt => {
@@ -46,10 +49,6 @@ export function OverallPlayerStatsTable() {
     return counts;
   }, [tourDreamTeams]);
 
-  const [sortBy, setSortBy] = useState<'goals' | 'assists' | 'yellowCards' | 'redCards' | 'ownGoals' | 'games'>('goals');
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  // Build a set of (player_id, tour_id) where player was substituted (skipping the tour)
   const skippedTours = useMemo(() => {
     const set = new Set<string>();
     substitutions.forEach((sub: any) => {
@@ -58,18 +57,15 @@ export function OverallPlayerStatsTable() {
     return set;
   }, [substitutions]);
 
-  // Calculate games per player based on team matches (1 match = 1 game)
   const playerGamesMap = useMemo(() => {
     const gamesMap = new Map<string, number>();
     
     players.forEach((player: any) => {
-      if (!player.team_id) return; // Legionnaires don't have fixed teams
+      if (!player.team_id) return;
       
       let gamesCount = 0;
       allMatches.forEach((match: any) => {
-        // Check if player's team participated in this match
         if (match.home_team_id === player.team_id || match.away_team_id === player.team_id) {
-          // Check if player was not substituted for this tour
           if (!skippedTours.has(`${player.id}_${match.tour_id}`)) {
             gamesCount++;
           }
@@ -79,12 +75,10 @@ export function OverallPlayerStatsTable() {
       gamesMap.set(player.id, gamesCount);
     });
 
-    // For legionnaires: count games where they substituted someone
     substitutions.forEach((sub: any) => {
       const substituteId = sub.substitute_player_id;
       const tourId = sub.tour_id;
       
-      // Count matches in this tour for the team of original player
       const originalPlayer = players.find((p: any) => p.id === sub.original_player_id);
       if (originalPlayer?.team_id) {
         const matchesInTour = allMatches.filter((match: any) => 
@@ -103,10 +97,8 @@ export function OverallPlayerStatsTable() {
   const aggregatedStats = useMemo(() => {
     const statsMap = new Map<string, OverallPlayerStats>();
 
-    // First, initialize all players who have stats
     playerStats.forEach((stat: any) => {
       const tourId = stat.match?.tour_id;
-      // Skip this stat if the player was substituted for this tour
       if (tourId && skippedTours.has(`${stat.player_id}_${tourId}`)) {
         return;
       }
@@ -138,7 +130,6 @@ export function OverallPlayerStatsTable() {
       }
     });
 
-    // Update games count and dream team/MVP counts for existing entries
     statsMap.forEach((stats, playerId) => {
       stats.games = playerGamesMap.get(playerId) || 0;
       stats.dreamTeamCount = dreamTeamCounts.get(playerId) || 0;
@@ -147,10 +138,31 @@ export function OverallPlayerStatsTable() {
 
     const sorted = Array.from(statsMap.values());
     sorted.sort((a, b) => {
-      const primary = b[sortBy] - a[sortBy];
-      if (primary !== 0) return primary;
+      if (sortBy === 'points') {
+        const pointsA = a.goals + a.assists;
+        const pointsB = b.goals + b.assists;
+        if (pointsB !== pointsA) return pointsB - pointsA;
+        return b.goals - a.goals;
+      }
+      
+      const sortableColumns: Record<string, keyof OverallPlayerStats> = {
+        'goals': 'goals',
+        'assists': 'assists',
+        'yellowCards': 'yellowCards',
+        'redCards': 'redCards',
+        'ownGoals': 'ownGoals',
+        'games': 'games',
+      };
+
+      const column = sortableColumns[sortBy];
+      if (column) {
+        const primary = (b[column] as number) - (a[column] as number);
+        if (primary !== 0) return primary;
+      }
+      
       return b.goals - a.goals || b.assists - a.assists;
     });
+    
     return sorted;
   }, [playerStats, players, teams, dreamTeamCounts, mvpCounts, sortBy, skippedTours, playerGamesMap]);
 
@@ -208,6 +220,7 @@ export function OverallPlayerStatsTable() {
               <SortableHeader column="games" label="🎮" />
               <SortableHeader column="goals" label="⚽" />
               <SortableHeader column="assists" label="🅰️" />
+              <SortableHeader column="points" label="Г+П" />
               <SortableHeader column="ownGoals" label="🔄" />
               <SortableHeader column="yellowCards" label="🟨" />
               <SortableHeader column="redCards" label="🟥" />
@@ -221,7 +234,7 @@ export function OverallPlayerStatsTable() {
                 key={player.playerId}
                 className="border-b border-border/50 hover:bg-secondary/50 transition-colors"
               >
-                <td className="py-2 px-2 text-muted-foreground text-xs">{idx + 1}</td>
+                <td className="py-2 px-2 text-muted-foreground text-xs font-bold">{idx + 1}</td>
                 <td className="py-2 px-2 font-medium text-sm">
                   <span className="block">{player.playerName}</span>
                   <span className={`sm:hidden text-xs ${getTeamNameClass(player.teamColor)}`}>
@@ -238,6 +251,9 @@ export function OverallPlayerStatsTable() {
                   {player.goals}
                 </td>
                 <td className="text-center py-2 px-1 font-mono text-sm">{player.assists}</td>
+                <td className="text-center py-2 px-1 font-mono font-bold text-primary text-sm">
+                  {player.goals + player.assists}
+                </td>
                 <td className="text-center py-2 px-1 font-mono text-sm text-orange-500">
                   {player.ownGoals > 0 ? player.ownGoals : '-'}
                 </td>
