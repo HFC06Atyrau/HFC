@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.supabase.co /HFC/;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.supabase.co;">
 
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
@@ -17,16 +17,16 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="HFC Stats">
     
-    <link rel="apple-touch-icon" href="/HFC/icon.png?v=3">
-    <link rel="icon" type="image/png" href="/HFC/icon.png?v=3">
+    <link rel="apple-touch-icon" href="/HFC/icon.png?v=4">
+    <link rel="icon" type="image/png" href="/HFC/icon.png?v=4">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
     <script>
-      // 1. Обработка ошибок загрузки скриптов
+      // 1. Быстрая перезагрузка при ошибках загрузки скриптов
       window.addEventListener('error', (e) => {
-        if (e.message.includes('Loading chunk') || e.message.includes('Script error')) {
+        if (e.message.includes('Loading chunk')) {
           location.reload(true);
         }
       }, true);
@@ -37,20 +37,6 @@
           window.location.reload();
         });
       }
-
-      // 3. ПРОВЕРКА ЗАГРУЗКИ: Если данных нет через 5 секунд
-      setTimeout(() => {
-        const root = document.getElementById('root');
-        // Если на странице всё еще висит "Нет данных" или пустота
-        if (root && (root.innerText.includes('Нет данных') || root.innerHTML === "")) {
-          console.warn('Данные не пришли. Пробую очистить кэш...');
-          if ('caches' in window) {
-            caches.keys().then(names => {
-              for (let name of names) caches.delete(name);
-            });
-          }
-        }
-      }, 5000);
     </script>
     <script type="module" crossorigin src="/HFC/assets/index-BvkxZALt.js"></script>
     <link rel="stylesheet" crossorigin href="/HFC/assets/index-BTmbsGHq.css">
