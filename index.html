@@ -3,6 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+
     <title>HFC Stats - Футбольная статистика</title>
     <meta name="description" content="Статистика футбольных турниров HFC. Результаты матчей, таблицы команд, статистика игроков." />
     <meta name="author" content="HFC" />
@@ -10,7 +15,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="HFC Stats">
-    <link rel="apple-touch-icon" href="/HFC/icon.png">
+    <link rel="apple-touch-icon" href="/HFC/icon.png?v=1">
 
     <meta property="og:title" content="HFC Stats - Футбольная статистика" />
     <meta property="og:description" content="Статистика футбольных турниров HFC. Результаты матчей, таблицы команд, статистика игроков." />
@@ -22,11 +27,21 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
     <script>
+      // 1. Если при обновлении сайта какой-то файл не нашелся (из-за старого кэша) — перезагружаем
       window.addEventListener('error', (e) => {
         if (e.message.includes('Loading chunk') || e.message.includes('Script error')) {
+          console.log('Кэш устарел, перезагружаю...');
           location.reload();
         }
       }, true);
+
+      // 2. АВТО-ОБНОВЛЕНИЕ: Когда ты делаешь "npm run deploy", 
+      // компьютер и телефон увидят новую версию и сами обновят страницу.
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          window.location.reload();
+        });
+      }
     </script>
     <script type="module" crossorigin src="/HFC/assets/index-BvkxZALt.js"></script>
     <link rel="stylesheet" crossorigin href="/HFC/assets/index-BTmbsGHq.css">
