@@ -17,72 +17,43 @@
     <link rel="icon" type="image/png" href="/HFC/icon.png?v=12">
 
     <script>
-      // Защита от бесконечного цикла
-      const MAX_RELOADS = 3;
-      const RELOAD_KEY = 'hfc_reload_count';
-      const RELOAD_TIMEOUT = 5000; // 5 секунд
-
-      function safeReload() {
-        const count = parseInt(sessionStorage.getItem(RELOAD_KEY) || '0');
+  // Счётчик перезагрузок для защиты от цикла
+  const RELOAD_KEY = 'hfc_reload_attempt';
+  const MAX_RELOADS = 3;
+  
+  window.addEventListener('error', (e) => {
+    if (e.message && e.message.includes('Loading chunk')) {
+      const attempts = parseInt(sessionStorage.getItem(RELOAD_KEY) || '0');
+      
+      if (attempts < MAX_RELOADS) {
+        console.warn(`Ошибка чанка. Попытка ${attempts + 1}/${MAX_RELOADS}`);
+        sessionStorage.setItem(RELOAD_KEY, String(attempts + 1));
         
-        if (count >= MAX_RELOADS) {
-          console.error('Слишком много перезагрузок. Остановка.');
-          sessionStorage.removeItem(RELOAD_KEY);
-          // Показываем пользователю сообщение
-          document.body.innerHTML = `
-            <div style="padding:20px;text-align:center;font-family:sans-serif;">
-              <h2>⚠️ Ошибка загрузки</h2>
-              <p>Попробуйте очистить кэш браузера:</p>
-              <button onclick="clearAllCache()" style="padding:10px 20px;font-size:16px;">
-                Очистить кэш и перезагрузить
-              </button>
-            </div>
-          `;
-          return;
-        }
-        
-        sessionStorage.setItem(RELOAD_KEY, String(count + 1));
-        setTimeout(() => sessionStorage.removeItem(RELOAD_KEY), RELOAD_TIMEOUT);
-        location.reload();
-      }
-
-      // Глобальная функция для ручной очистки
-      window.clearAllCache = async () => {
+        // Очищаем только SW кэш, не весь браузер
         if ('caches' in window) {
-          const keys = await caches.keys();
-          await Promise.all(keys.map(k => caches.delete(k)));
+          caches.keys().then(keys => {
+            Promise.all(keys.map(k => caches.delete(k)))
+              .then(() => location.reload());
+          });
+        } else {
+          location.reload();
         }
-        localStorage.clear();
-        sessionStorage.clear();
-        location.reload();
-      };
-
-      // Отлов критических ошибок (только chunk loading)
-      window.addEventListener('error', (e) => {
-        // Игнорируем eval (это нормально для dev-режима)
-        if (e.message.includes('Loading chunk') || e.message.includes('Failed to fetch')) {
-          console.warn('Ошибка загрузки чанка:', e.message);
-          safeReload();
-        }
-      }, true);
-
-      // Service Worker (только если есть файл sw.js)
-      if ('serviceWorker' in navigator && import.meta.env?.PROD) {
-        navigator.serviceWorker.register('/sw.js').catch(err => 
-          console.log('SW не зарегистрирован:', err)
-        );
-        
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-          console.log('Новая версия SW активирована');
-          safeReload();
-        });
-      }
-
-      // Очистка счётчика при успешной загрузке
-      window.addEventListener('load', () => {
+      } else {
+        // Превышен лимит - показываем сообщение
+        console.error('Слишком много ошибок. Требуется ручная очистка.');
         sessionStorage.removeItem(RELOAD_KEY);
-      });
-    </script>
+        alert('Ошибка загрузки. Нажмите Ctrl+Shift+R для перезагрузки.');
+      }
+    }
+  }, true);
+
+  // Сбрасываем счётчик при успешной загрузке
+  window.addEventListener('load', () => {
+    setTimeout(() => sessionStorage.removeItem(RELOAD_KEY), 1000);
+  });
+
+  // УБИРАЕМ controllerchange - он вызывает лишние перезагрузки!
+</script>
     <script type="module" crossorigin src="/HFC/assets/index-BvkxZALt.js"></script>
     <link rel="stylesheet" crossorigin href="/HFC/assets/index-BTmbsGHq.css">
   <link rel="manifest" href="/HFC/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/HFC/registerSW.js"></script></head>
