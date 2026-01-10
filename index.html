@@ -4,36 +4,84 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co;">
-
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-    <meta http-equiv="Pragma" content="no-cache" />
-    <meta http-equiv="Expires" content="0" />
+    <!-- Упрощённый CSP (если используете Vite - eval нужен для HMR) -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co;">
 
     <title>HFC Stats - Футбольная статистика</title>
     
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="HFC Stats">
     
-    <link rel="apple-touch-icon" href="/HFC/icon.png?v=11">
-    <link rel="icon" type="image/png" href="/HFC/icon.png?v=11">
+    <link rel="apple-touch-icon" href="/HFC/icon.png?v=12">
+    <link rel="icon" type="image/png" href="/HFC/icon.png?v=12">
 
     <script>
-      // 1. Ловим ошибки CSP и чанков
+      // Защита от бесконечного цикла
+      const MAX_RELOADS = 3;
+      const RELOAD_KEY = 'hfc_reload_count';
+      const RELOAD_TIMEOUT = 5000; // 5 секунд
+
+      function safeReload() {
+        const count = parseInt(sessionStorage.getItem(RELOAD_KEY) || '0');
+        
+        if (count >= MAX_RELOADS) {
+          console.error('Слишком много перезагрузок. Остановка.');
+          sessionStorage.removeItem(RELOAD_KEY);
+          // Показываем пользователю сообщение
+          document.body.innerHTML = `
+            <div style="padding:20px;text-align:center;font-family:sans-serif;">
+              <h2>⚠️ Ошибка загрузки</h2>
+              <p>Попробуйте очистить кэш браузера:</p>
+              <button onclick="clearAllCache()" style="padding:10px 20px;font-size:16px;">
+                Очистить кэш и перезагрузить
+              </button>
+            </div>
+          `;
+          return;
+        }
+        
+        sessionStorage.setItem(RELOAD_KEY, String(count + 1));
+        setTimeout(() => sessionStorage.removeItem(RELOAD_KEY), RELOAD_TIMEOUT);
+        location.reload();
+      }
+
+      // Глобальная функция для ручной очистки
+      window.clearAllCache = async () => {
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(k => caches.delete(k)));
+        }
+        localStorage.clear();
+        sessionStorage.clear();
+        location.reload();
+      };
+
+      // Отлов критических ошибок (только chunk loading)
       window.addEventListener('error', (e) => {
-        if (e.message.includes('eval') || e.message.includes('Loading chunk')) {
-          console.warn('Критическая ошибка JS/CSP. Чистим кэш и перезагружаем...');
-          if ('caches' in window) caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
-          location.reload(true);
+        // Игнорируем eval (это нормально для dev-режима)
+        if (e.message.includes('Loading chunk') || e.message.includes('Failed to fetch')) {
+          console.warn('Ошибка загрузки чанка:', e.message);
+          safeReload();
         }
       }, true);
 
-      // 2. Авто-обновление PWA при новом деплое
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
+      // Service Worker (только если есть файл sw.js)
+      if ('serviceWorker' in navigator && import.meta.env?.PROD) {
+        navigator.serviceWorker.register('/sw.js').catch(err => 
+          console.log('SW не зарегистрирован:', err)
+        );
+        
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          console.log('Новая версия SW активирована');
+          safeReload();
+        });
       }
+
+      // Очистка счётчика при успешной загрузке
+      window.addEventListener('load', () => {
+        sessionStorage.removeItem(RELOAD_KEY);
+      });
     </script>
     <script type="module" crossorigin src="/HFC/assets/index-BvkxZALt.js"></script>
     <link rel="stylesheet" crossorigin href="/HFC/assets/index-BTmbsGHq.css">
