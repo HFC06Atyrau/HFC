@@ -4,32 +4,58 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     
-    <!-- Упрощённый CSP (если используете Vite - eval нужен для HMR) -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co;">
 
     <title>HFC Stats - Футбольная статистика</title>
     
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="HFC Stats">
     
-    <link rel="apple-touch-icon" href="/HFC/icon.png?v=12">
-    <link rel="icon" type="image/png" href="/HFC/icon.png?v=12">
+    <link rel="apple-touch-icon" href="/HFC/icon.png?v=2">
+    <link rel="icon" type="image/png" href="/HFC/icon.png?v=2">
+    
+    <meta property="og:title" content="HFC Stats - Футбольная статистика" />
+    <meta property="og:description" content="Статистика футбольных турниров HFC. Результаты матчей, таблицы команд, статистика игроков." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
     <script>
-  // Счётчик перезагрузок для защиты от цикла
-  const RELOAD_KEY = 'hfc_reload_attempt';
-  const MAX_RELOADS = 3;
-  
-  window.addEventListener('error', (e) => {
-    if (e.message && e.message.includes('Loading chunk')) {
-      const attempts = parseInt(sessionStorage.getItem(RELOAD_KEY) || '0');
+      const RELOAD_KEY = 'hfc_reload_count';
+      const MAX_RELOADS = 2;
+      const RELOAD_WINDOW = 10000;
       
-      if (attempts < MAX_RELOADS) {
-        console.warn(`Ошибка чанка. Попытка ${attempts + 1}/${MAX_RELOADS}`);
-        sessionStorage.setItem(RELOAD_KEY, String(attempts + 1));
+      function canReload() {
+        const now = Date.now();
+        const lastReload = parseInt(localStorage.getItem(RELOAD_KEY + '_time') || '0');
+        const count = parseInt(localStorage.getItem(RELOAD_KEY) || '0');
         
-        // Очищаем только SW кэш, не весь браузер
+        if (now - lastReload > RELOAD_WINDOW) {
+          localStorage.setItem(RELOAD_KEY, '0');
+          return true;
+        }
+        
+        if (count >= MAX_RELOADS) {
+          console.error('⛔ Превышен лимит перезагрузок');
+          return false;
+        }
+        
+        return true;
+      }
+      
+      function safeReload() {
+        if (!canReload()) return;
+        
+        const count = parseInt(localStorage.getItem(RELOAD_KEY) || '0');
+        localStorage.setItem(RELOAD_KEY, String(count + 1));
+        localStorage.setItem(RELOAD_KEY + '_time', String(Date.now()));
+        
+        console.log(`🔄 Перезагрузка ${count + 1}/${MAX_RELOADS}`);
+        
         if ('caches' in window) {
           caches.keys().then(keys => {
             Promise.all(keys.map(k => caches.delete(k)))
@@ -38,22 +64,22 @@
         } else {
           location.reload();
         }
-      } else {
-        // Превышен лимит - показываем сообщение
-        console.error('Слишком много ошибок. Требуется ручная очистка.');
-        sessionStorage.removeItem(RELOAD_KEY);
-        alert('Ошибка загрузки. Нажмите Ctrl+Shift+R для перезагрузки.');
       }
-    }
-  }, true);
 
-  // Сбрасываем счётчик при успешной загрузке
-  window.addEventListener('load', () => {
-    setTimeout(() => sessionStorage.removeItem(RELOAD_KEY), 1000);
-  });
+      window.addEventListener('error', (e) => {
+        if (e.message && e.message.includes('Loading chunk')) {
+          console.warn('⚠️ Ошибка загрузки чанка');
+          safeReload();
+        }
+      }, true);
 
-  // УБИРАЕМ controllerchange - он вызывает лишние перезагрузки!
-</script>
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          localStorage.setItem(RELOAD_KEY, '0');
+          console.log('✅ Приложение загружено успешно');
+        }, 2000);
+      });
+    </script>
     <script type="module" crossorigin src="/HFC/assets/index-BvkxZALt.js"></script>
     <link rel="stylesheet" crossorigin href="/HFC/assets/index-BTmbsGHq.css">
   <link rel="manifest" href="/HFC/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/HFC/registerSW.js"></script></head>
