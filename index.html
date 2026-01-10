@@ -4,7 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co;">
+
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
 
     <title>HFC Stats - Футбольная статистика</title>
     
@@ -13,13 +17,12 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="HFC Stats">
     
-    <link rel="apple-touch-icon" href="/HFC/icon.png?v=2">
-    <link rel="icon" type="image/png" href="/HFC/icon.png?v=2">
+    <link rel="apple-touch-icon" href="/HFC/icon.png?v=3">
+    <link rel="icon" type="image/png" href="/HFC/icon.png?v=3">
     
     <meta property="og:title" content="HFC Stats - Футбольная статистика" />
-    <meta property="og:description" content="Статистика футбольных турниров HFC. Результаты матчей, таблицы команд, статистика игроков." />
+    <meta property="og:description" content="Статистика футбольных турниров HFC." />
     <meta property="og:type" content="website" />
-    <meta name="twitter:card" content="summary_large_image" />
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -39,50 +42,47 @@
           return true;
         }
         
-        if (count >= MAX_RELOADS) {
-          console.error('⛔ Превышен лимит перезагрузок');
-          return false;
-        }
-        
-        return true;
+        return count < MAX_RELOADS;
       }
       
       function safeReload() {
-        if (!canReload()) return;
+        if (!canReload()) {
+          console.error('⛔ Лимит перезагрузок исчерпан. Попробуйте очистить кэш вручную.');
+          return;
+        }
         
         const count = parseInt(localStorage.getItem(RELOAD_KEY) || '0');
         localStorage.setItem(RELOAD_KEY, String(count + 1));
         localStorage.setItem(RELOAD_KEY + '_time', String(Date.now()));
         
-        console.log(`🔄 Перезагрузка ${count + 1}/${MAX_RELOADS}`);
-        
         if ('caches' in window) {
           caches.keys().then(keys => {
-            Promise.all(keys.map(k => caches.delete(k)))
-              .then(() => location.reload());
+            Promise.all(keys.map(k => caches.delete(k))).then(() => location.reload());
           });
         } else {
           location.reload();
         }
       }
 
+      // Ловим ошибку eval (CSP) и битых чанков
       window.addEventListener('error', (e) => {
-        if (e.message && e.message.includes('Loading chunk')) {
-          console.warn('⚠️ Ошибка загрузки чанка');
+        const isCritical = e.message && (e.message.includes('Loading chunk') || e.message.includes('eval'));
+        if (isCritical) {
+          console.warn('⚠️ Критическая ошибка JS/CSP. Пробуем безопасную перезагрузку...');
           safeReload();
         }
       }, true);
 
+      // Сброс счетчика при успешной загрузке
       window.addEventListener('load', () => {
         setTimeout(() => {
           localStorage.setItem(RELOAD_KEY, '0');
-          console.log('✅ Приложение загружено успешно');
         }, 2000);
       });
     </script>
     <script type="module" crossorigin src="/HFC/assets/index-BvkxZALt.js"></script>
     <link rel="stylesheet" crossorigin href="/HFC/assets/index-BTmbsGHq.css">
-  <link rel="manifest" href="/HFC/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/HFC/registerSW.js"></script></head>
+  <link rel="manifest" href="/HFC/manifest.webmanifest"><script id="vite-plugin-pwa:inline-sw">if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/HFC/sw.js', { scope: '/HFC/' })})}</script></head>
   <body class="dark">
     <div id="root"></div>
   </body>
