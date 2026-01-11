@@ -4,7 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co;">
+    <!-- Обновленный CSP без Service Worker -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'none';">
 
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
@@ -28,6 +29,18 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
     <script>
+      // Отключаем Service Worker если он есть
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(registrations => {
+          registrations.forEach(registration => {
+            console.log('🗑️ Удаляем старый Service Worker');
+            registration.unregister();
+          });
+        }).catch(err => {
+          console.warn('Ошибка при удалении SW:', err);
+        });
+      }
+
       const RELOAD_KEY = 'hfc_reload_count';
       const MAX_RELOADS = 2;
       const RELOAD_WINDOW = 10000;
@@ -66,6 +79,12 @@
 
       // Ловим ошибку eval (CSP) и битых чанков
       window.addEventListener('error', (e) => {
+        // Игнорируем ошибки Service Worker
+        if (e.message && e.message.includes('ServiceWorker')) {
+          console.log('ℹ️ Service Worker отключен (это нормально)');
+          return;
+        }
+        
         const isCritical = e.message && (e.message.includes('Loading chunk') || e.message.includes('eval'));
         if (isCritical) {
           console.warn('⚠️ Критическая ошибка JS/CSP. Пробуем безопасную перезагрузку...');
@@ -77,6 +96,7 @@
       window.addEventListener('load', () => {
         setTimeout(() => {
           localStorage.setItem(RELOAD_KEY, '0');
+          console.log('✅ Приложение успешно загружено');
         }, 2000);
       });
     </script>
