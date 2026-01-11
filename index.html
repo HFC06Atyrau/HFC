@@ -4,8 +4,20 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     
-    <!-- Обновленный CSP без Service Worker -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'none';">
+    <!-- Упрощенный CSP для production -->
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self' https://*.supabase.co;
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      font-src 'self' https://fonts.gstatic.com data:;
+      img-src 'self' data: blob: https://*.supabase.co https:;
+      connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.github.com;
+      worker-src 'none';
+      object-src 'none';
+      base-uri 'self';
+      form-action 'self';
+      frame-ancestors 'none';
+    ">
 
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
@@ -18,8 +30,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="HFC Stats">
     
-    <link rel="apple-touch-icon" href="/HFC/icon.png?v=3">
-    <link rel="icon" type="image/png" href="/HFC/icon.png?v=3">
+    <link rel="apple-touch-icon" href="/HFC/icon.png">
+    <link rel="icon" type="image/png" href="/HFC/icon.png">
     
     <meta property="og:title" content="HFC Stats - Футбольная статистика" />
     <meta property="og:description" content="Статистика футбольных турниров HFC." />
@@ -37,7 +49,7 @@
             registration.unregister();
           });
         }).catch(err => {
-          console.warn('Ошибка при удалении SW:', err);
+          console.warn('SW cleanup:', err.message);
         });
       }
 
@@ -60,7 +72,7 @@
       
       function safeReload() {
         if (!canReload()) {
-          console.error('⛔ Лимит перезагрузок исчерпан. Попробуйте очистить кэш вручную.');
+          console.error('⛔ Лимит перезагрузок. Очистите кэш вручную (Ctrl+Shift+Delete)');
           return;
         }
         
@@ -68,27 +80,46 @@
         localStorage.setItem(RELOAD_KEY, String(count + 1));
         localStorage.setItem(RELOAD_KEY + '_time', String(Date.now()));
         
+        console.log('🔄 Перезагрузка...');
+        
         if ('caches' in window) {
           caches.keys().then(keys => {
-            Promise.all(keys.map(k => caches.delete(k))).then(() => location.reload());
+            Promise.all(keys.map(k => caches.delete(k))).then(() => {
+              window.location.reload();
+            });
+          }).catch(() => {
+            window.location.reload();
           });
         } else {
-          location.reload();
+          window.location.reload();
         }
       }
 
-      // Ловим ошибку eval (CSP) и битых чанков
+      // Ловим критические ошибки
       window.addEventListener('error', (e) => {
+        const msg = e.message || '';
+        
         // Игнорируем ошибки Service Worker
-        if (e.message && e.message.includes('ServiceWorker')) {
-          console.log('ℹ️ Service Worker отключен (это нормально)');
+        if (msg.includes('ServiceWorker') || msg.includes('sw.js')) {
+          e.preventDefault();
+          console.log('ℹ️ Service Worker отключен');
           return;
         }
         
-        const isCritical = e.message && (e.message.includes('Loading chunk') || e.message.includes('eval'));
+        // Игнорируем CSP eval warning (он не критичен если unsafe-eval включен)
+        if (msg.includes('eval') && msg.includes('Content Security Policy')) {
+          console.warn('⚠️ CSP eval warning (можно игнорировать)');
+          return;
+        }
+        
+        // Критические ошибки
+        const isCritical = msg.includes('Loading chunk') || 
+                          msg.includes('Failed to fetch') ||
+                          msg.includes('Importing a module script failed');
+        
         if (isCritical) {
-          console.warn('⚠️ Критическая ошибка JS/CSP. Пробуем безопасную перезагрузку...');
-          safeReload();
+          console.error('❌ Критическая ошибка загрузки');
+          setTimeout(() => safeReload(), 1000);
         }
       }, true);
 
@@ -96,7 +127,7 @@
       window.addEventListener('load', () => {
         setTimeout(() => {
           localStorage.setItem(RELOAD_KEY, '0');
-          console.log('✅ Приложение успешно загружено');
+          console.log('✅ Приложение загружено');
         }, 2000);
       });
     </script>
